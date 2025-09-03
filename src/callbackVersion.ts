@@ -7,10 +7,11 @@ const WEATHER_API_KEY = process.env.WEATHER_API_KEY as string;
 
 const getLocation = (
   city: string,
-  callbackfetchCurrentWeather: (
-    lat: number,
-    lon: number,
-    cityname: string
+  callback: (
+    error: Error | null,
+    lat?: number,
+    lon?: number,
+    cityname?: string
   ) => void
 ): void => {
   console.log("Getting Location....");
@@ -26,22 +27,25 @@ const getLocation = (
         res.on("end", () => {
           try {
             const json = JSON.parse(geoLocation);
+            if (json.legnth === 0) {
+              return callback(new Error(`No results found for ${city}`));
+            }
             const { lat, lon, name } = json[0];
-            callbackfetchCurrentWeather(lat, lon, name);
+            callback(null, lat, lon, name);
           } catch (error) {
-            console.log(error);
+            callback(error as Error);
           }
         });
       }
     )
-    .on("error", (err) => console.error("Request failed:", err.message));
+    .on("error", (err) => callback(err));
 };
 
 const fetchCurrentWeather = (
   lat: number,
   lon: number,
   cityname: string,
-  callback: (cityname: string, weatherData: any) => void
+  callback: (error: Error | null, cityname?: string, weatherData?: any) => void
 ) => {
   console.log(`Fetching the current weather for ${cityname}`);
   http
@@ -56,17 +60,20 @@ const fetchCurrentWeather = (
         res.on("end", () => {
           try {
             const currentWeatherData = JSON.parse(currentWeather);
-            callback(cityname, currentWeatherData);
+            if (!currentWeatherData) {
+              return callback(new Error(`Weather data not found`));
+            }
+            callback(null, cityname, currentWeatherData);
           } catch (error) {
-            console.log(error);
+            callback(error as Error);
           }
         });
       }
     )
-    .on("error", (err) => console.error("Request failed:", err.message));
+    .on("error", (err) => callback(err));
 };
 
-const displayforeCast = (cityname: string, weatherData: any) => {
+const displayForecast = (cityname: string, weatherData: any) => {
   setTimeout(() => {
     console.log(
       `The forecast for today for ${cityname} : ${JSON.stringify(
@@ -76,8 +83,12 @@ const displayforeCast = (cityname: string, weatherData: any) => {
   }, 2000);
 };
 
-getLocation("Pretoria", (lat, lon, cityname) =>
-  fetchCurrentWeather(lat, lon, cityname, (city, data) =>
-    displayforeCast(city, data)
-  )
-);
+getLocation("Pretoria", (error, lat, lon, cityname) => {
+  if (error) return console.log("Location error:", error.message);
+
+  fetchCurrentWeather(lat!, lon!, cityname!, (error, city, data) => {
+    if (error) return console.log("WeatherData error:", error.message);
+
+    displayForecast(city!, data);
+  });
+});
