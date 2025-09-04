@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY as string;
+const NEWS_API_KEY = process.env.NEWS_API_KEY as string;
 
 const promiseGetLocation = (
   city: string
@@ -73,7 +74,7 @@ const promiseFetchCurrentWeather = (
           });
         }
       )
-      .on("error", (err) => reject(err));
+      .on("error", (err) => reject(err)); 
   });
 };
 
@@ -92,7 +93,6 @@ const promiseDisplayForecast = (
   });
 };
 
-
 promiseGetLocation("Pretoria")
   .then(({ lat, lon, name }) => {
     return promiseFetchCurrentWeather(lat, lon, name);
@@ -101,3 +101,84 @@ promiseGetLocation("Pretoria")
     return promiseDisplayForecast(cityname, weatherData);
   })
   .catch((error) => console.error("An error occured:", error.message));
+
+const promiseGetCountry = (countryPrefix: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (countryPrefix) {
+      console.log(`Receiving country prefix...`);
+      resolve(countryPrefix);
+    } else {
+      reject(new Error(`Country not found`));
+    }
+  });
+};
+
+const promiseFetchHeadlines = (countryPrefix: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    console.log(`Fetching Top headlines for ${countryPrefix}`);
+
+    http
+      .get(
+        `http://api.mediastack.com/v1/news?access_key=${NEWS_API_KEY}&categories=general&countries=${countryPrefix}`,
+        (res: IncomingMessage) => {
+          let headlines = "";
+
+          if (res.statusCode !== 200) {
+            reject(new Error(`Request failed with status ${res.statusCode}`));
+            res.resume();
+            return;
+          }
+
+          res.on("data", (chunk) => {
+            headlines += chunk;
+          });
+
+          res.on("end", () => {
+            try {
+              const headlinesData = JSON.parse(headlines);
+
+              if (!headlinesData) {
+                reject(new Error(`No headlines data found`));
+              } else {
+                resolve(headlinesData);
+              }
+            } catch (error) {
+              reject(error);
+            }
+          });
+        }
+      )
+      .on("error", (err) => reject(err));
+  });
+};
+
+const promiseDisplayNews = (headlines: any) => {
+  console.log(`Displaying Headlines`);
+
+  setTimeout(() => {
+    console.log(`Top Headlines :`);
+    headlines.data.forEach((data: any) => {
+      console.log(`Title: ${data.title || "N/A"}`);
+      console.log(`Description: ${data.description || "N/A"}`);
+      console.log(
+        `Published at: ${
+          data.published_at
+            ? new Intl.DateTimeFormat("en-GB").format(
+                new Date(data.published_at)
+              )
+            : "N/A"
+        }`
+      );
+    });
+  }, 2000);
+};
+
+promiseGetCountry("za")
+  .then((countryPrefix) => {
+    return promiseFetchHeadlines(countryPrefix);
+  })
+  .then((headlines) => {
+    return promiseDisplayNews(headlines);
+  })
+  .catch((error) => console.error("An error has occured :", error.message));
+
