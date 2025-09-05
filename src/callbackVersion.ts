@@ -95,19 +95,19 @@ getLocation("Pretoria", (error, lat, lon, cityname) => {
 
 const getCountry = (
   countryPrefix: string,
-  callback: (prefix: string) => void
+  callback: (error: Error | null, prefix?: string) => void
 ) => {
   if (countryPrefix) {
     console.log(`Recieving country prefix...`);
-    callback(countryPrefix);
+    callback(null, countryPrefix);
   } else {
-    console.log(`Country not found`);
+    callback(new Error(`Country not found`));
   }
 };
 
 const fetchHeadlines = (
   countryPrefix: string,
-  callback: (headlines: any) => void
+  callback: (error: Error | null, headlines?: any) => void
 ) => {
   console.log(`featching Top headlines for ${countryPrefix}`);
   http
@@ -115,20 +115,32 @@ const fetchHeadlines = (
       `http://api.mediastack.com/v1/news?access_key=${NEWS_API_KEY}&categories=general&countries=${countryPrefix}`,
       (res: IncomingMessage) => {
         let headlines = "";
+
+        if (res.statusCode !== 200) {
+          callback(new Error(`Request failed with status ${res.statusCode}`));
+          res.resume();
+          return;
+        }
+
         res.on("data", (chunck) => {
           headlines += chunck;
         });
+
         res.on("end", () => {
           try {
             const headlinesData = JSON.parse(headlines);
-            callback(headlinesData);
+
+            if (!headlinesData) {
+              callback(new Error(`No headlines data found`));
+            }
+            callback(null, headlinesData);
           } catch (error) {
-            console.log(error);
+            callback(error as Error);
           }
         });
       }
     )
-    .on("error", (err) => console.log(err.message));
+    .on("error", (err) => callback(err));
 };
 
 const displayNews = (headlines: any) => {
@@ -136,15 +148,33 @@ const displayNews = (headlines: any) => {
 
   setTimeout(() => {
     console.log(`Top Headlines :`);
-    headlines.data.forEach((data : any) => {
-        JSON.stringify(data)
-        console.log(`Title : ${data.title}`)
-        console.log(`Description : ${data.description}`)
-        console.log(`Published at : ${new Intl.DateTimeFormat("en-GB").format(new Date(data.published_at))}`)
-    })
+    headlines.data.forEach((data: any) => {
+      console.log(`Title: ${data.title || "N/A"}`);
+      console.log(`Description: ${data.description || "N/A"}`);
+      console.log(
+        `Published at: ${
+          data.published_at
+            ? new Intl.DateTimeFormat("en-GB").format(
+                new Date(data.published_at)
+              )
+            : "N/A"
+        }`
+      );
+    });
   }, 2000);
 };
 
-getCountry("za", (countryPrefix) =>
-  fetchHeadlines(countryPrefix, (headlines) => displayNews(headlines))
-);
+getCountry("za", (err, countryPrefix) => {
+  if (err) {
+    console.error("Country error:", err.message);
+    return;
+  }
+
+  fetchHeadlines(countryPrefix!, (err, headlines) => {
+    if (err) {
+      console.error("Headlines error:",err.message);
+      return;
+    }
+    displayNews(headlines);
+  });
+});
