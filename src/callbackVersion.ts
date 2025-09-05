@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY as string;
+const NEWS_API_KEY = process.env.NEWS_API_KEY as string;
 
 const getLocation = (
   city: string,
@@ -73,7 +74,7 @@ const fetchCurrentWeather = (
     .on("error", (err) => callback(err));
 };
 
-const displayForecast = (cityname: string, weatherData :any) => {
+const displayForecast = (cityname: string, weatherData: any) => {
   setTimeout(() => {
     console.log(`Weather in ${cityname}:`);
     console.log(`Temperature: ${weatherData.main.temp}°C`);
@@ -92,4 +93,48 @@ getLocation("Pretoria", (error, lat, lon, cityname) => {
   });
 });
 
+const getCountry = (
+  countryPrefix: string,
+  callback: (prefix: string) => void
+) => {
+  if (countryPrefix) {
+    console.log(`Recieving country prefix...`);
+    callback(countryPrefix);
+  } else {
+    console.log(`Country not found`);
+  }
+};
 
+const fetchHeadlines = (countryPrefix: string, callback: (headlines: any) => void) => {
+  console.log(`featching Top headlines for ${countryPrefix}`);
+  http
+    .get(
+      `http://api.mediastack.com/v1/news?access_key=${NEWS_API_KEY}&categories=general&countries=${countryPrefix}`,
+      (res: IncomingMessage) => {
+        let headlines = "";
+        res.on("data", (chunck) => {
+          headlines += chunck;
+        });
+        res.on("end", () => {
+          try {
+            const headlinesData = headlines;
+            callback(headlinesData);
+          } catch (error) {
+            console.log(error);
+          }
+        });
+      }
+    )
+    .on("error", (err) => console.log(err.message));
+};
+
+const displayNews = (headlines: any) => {
+  console.log(`Displaying Headlines`);
+  setTimeout(() => {
+    console.log(`News Headlines: ${headlines}`);
+  }, 2000);
+};
+
+getCountry("us", (countryPrefix) =>
+  fetchHeadlines(countryPrefix, (headlines) => displayNews(headlines))
+);
