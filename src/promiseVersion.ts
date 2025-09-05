@@ -1,0 +1,194 @@
+import http, { IncomingMessage } from "http";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const WEATHER_API_KEY = process.env.WEATHER_API_KEY as string;
+const NEWS_API_KEY = process.env.NEWS_API_KEY as string;
+
+export const promiseGetLocation = (
+  city: string
+): Promise<{
+  lat: number;
+  lon: number;
+  name: string;
+}> => {
+  return new Promise((resolve, reject) => {
+    console.log("Getting Location....");
+    http
+      .get(
+        `http://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=${1}&appid=${WEATHER_API_KEY}`,
+        (res: IncomingMessage) => {
+          let geoLocation = "";
+          res.on("data", (chunk) => {
+            geoLocation += chunk;
+          });
+
+          res.on("end", () => {
+            try {
+              const json = JSON.parse(geoLocation);
+              if (json.length === 0) {
+                reject(new Error(`No results found for ${city}`));
+              }
+              const { lat, lon, name } = json[0];
+              resolve({ lat, lon, name });
+            } catch (error) {
+              reject(error as Error);
+            }
+          });
+        }
+      )
+      .on("error", (err) => reject(err));
+  });
+};
+
+export const promiseFetchCurrentWeather = (
+  lat: number,
+  lon: number,
+  cityname: string
+): Promise<{ cityname: string; weatherData: any }> => {
+  return new Promise((resolve, reject) => {
+    console.log(`Fetching the current weather for ${cityname}`);
+
+    http
+      .get(
+        `http://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`,
+        (res: IncomingMessage) => {
+          let currentWeather = "";
+
+          res.on("data", (chunk) => {
+            currentWeather += chunk;
+          });
+
+          res.on("end", () => {
+            try {
+              const currentWeatherData = JSON.parse(currentWeather);
+              if (!currentWeatherData) {
+                reject(new Error(`Weather data not found`));
+              } else {
+                resolve({ cityname, weatherData: currentWeatherData });
+              }
+            } catch (error) {
+              reject(error);
+            }
+          });
+        }
+      )
+      .on("error", (err) => reject(err)); 
+  });
+};
+
+export const promiseDisplayForecast = (
+  cityname: string,
+  weatherData: any
+): Promise<void> => {
+  return new Promise((resolve) => {
+    console.log(`Dispalying the current weather for ${cityname}`);
+    setTimeout(() => {
+      console.log(`Weather in ${cityname}:`);
+      console.log(`Temperature: ${weatherData.main.temp}°C`);
+      console.log(`Feels like: ${weatherData.main.feels_like}°C`);
+      console.log(`Condition: ${weatherData.weather[0].description}`);
+      resolve();
+    }, 2000);
+  });
+};
+
+
+export const promiseGetCountry = (countryPrefix: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (countryPrefix) {
+      console.log(`Receiving country prefix...`);
+      resolve(countryPrefix);
+    } else {
+      reject(new Error(`Country not found`));
+    }
+  });
+};
+
+export const promiseFetchHeadlines = (countryPrefix: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    console.log(`Fetching Top headlines for ${countryPrefix}`);
+
+    http
+      .get(
+        `http://api.mediastack.com/v1/news?access_key=${NEWS_API_KEY}&categories=general&countries=${countryPrefix}`,
+        (res: IncomingMessage) => {
+          let headlines = "";
+
+          if (res.statusCode !== 200) {
+            reject(new Error(`Request failed with status ${res.statusCode}`));
+            res.resume();
+            return;
+          }
+
+          res.on("data", (chunk) => {
+            headlines += chunk;
+          });
+
+          res.on("end", () => {
+            try {
+              const headlinesData = JSON.parse(headlines);
+
+              if (!headlinesData) {
+                reject(new Error(`No headlines data found`));
+              } else {
+                resolve(headlinesData);
+              }
+            } catch (error) {
+              reject(error);
+            }
+          });
+        }
+      )
+      .on("error", (err) => reject(err));
+  });
+};
+
+export const promiseDisplayNews = (headlines: any): Promise<void> => {
+  return new Promise((resolve) => {
+    console.log(`Displaying Headlines`);
+    setTimeout(() => {
+      console.log(`Top Headlines :`);
+      headlines.data.slice(0, 5).forEach((data: any) => {
+        console.log(`Title: ${data.title || "N/A"}`);
+        console.log(`Description: ${data.description || "N/A"}`);
+        console.log(
+          `Published at: ${
+            data.published_at
+              ? new Intl.DateTimeFormat("en-GB").format(
+                  new Date(data.published_at)
+                )
+              : "N/A"
+          }`
+        );
+        console.log("-------------------");
+      });
+      resolve();
+    }, 2000);
+  });
+};
+
+Promise.all([promiseGetLocation("Pretoria"), promiseGetCountry("za")])
+  .then(([location, countryPrefix]) => {
+    const weatherPromise = promiseFetchCurrentWeather(location.lat, location.lon, location.name);
+    const newsPromise = promiseFetchHeadlines(countryPrefix);
+    
+    return Promise.all([weatherPromise, newsPromise]);
+  })
+  .then(([{ cityname, weatherData }, headlines]) => {
+    const displayWeather = promiseDisplayForecast(cityname, weatherData);
+    const displayNews = promiseDisplayNews(headlines);
+
+    return Promise.all([displayWeather, displayNews]);
+  })
+  .then(() => {
+    console.log("Weather and News fetched and displayed in parallel!");
+  })
+  .catch((error) => {
+    console.error("An error occurred:", error.message);
+  });
+
+
+
+
