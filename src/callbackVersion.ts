@@ -105,7 +105,10 @@ const getCountry = (
   }
 };
 
-const fetchHeadlines = (countryPrefix: string, callback: (headlines: any) => void) => {
+const fetchHeadlines = (
+  countryPrefix: string,
+  callback: (headlines: any) => void
+) => {
   console.log(`featching Top headlines for ${countryPrefix}`);
   http
     .get(
@@ -117,7 +120,7 @@ const fetchHeadlines = (countryPrefix: string, callback: (headlines: any) => voi
         });
         res.on("end", () => {
           try {
-            const headlinesData = headlines;
+            const headlinesData = JSON.parse(headlines);
             callback(headlinesData);
           } catch (error) {
             console.log(error);
@@ -130,11 +133,18 @@ const fetchHeadlines = (countryPrefix: string, callback: (headlines: any) => voi
 
 const displayNews = (headlines: any) => {
   console.log(`Displaying Headlines`);
+
   setTimeout(() => {
-    console.log(`News Headlines: ${headlines}`);
+    console.log(`Top Headlines :`);
+    headlines.data.forEach((data : any) => {
+        JSON.stringify(data)
+        console.log(`Title : ${data.title}`)
+        console.log(`Description : ${data.description}`)
+        console.log(`Published at : ${new Intl.DateTimeFormat("en-GB").format(new Date(data.published_at))}`)
+    })
   }, 2000);
 };
 
-getCountry("us", (countryPrefix) =>
+getCountry("za", (countryPrefix) =>
   fetchHeadlines(countryPrefix, (headlines) => displayNews(headlines))
 );
