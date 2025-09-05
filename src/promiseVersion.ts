@@ -6,7 +6,7 @@ dotenv.config();
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY as string;
 const NEWS_API_KEY = process.env.NEWS_API_KEY as string;
 
-const promiseGetLocation = (
+export const promiseGetLocation = (
   city: string
 ): Promise<{
   lat: number;
@@ -27,7 +27,7 @@ const promiseGetLocation = (
           res.on("end", () => {
             try {
               const json = JSON.parse(geoLocation);
-              if (json.legnth === 0) {
+              if (json.length === 0) {
                 reject(new Error(`No results found for ${city}`));
               }
               const { lat, lon, name } = json[0];
@@ -42,7 +42,7 @@ const promiseGetLocation = (
   });
 };
 
-const promiseFetchCurrentWeather = (
+export const promiseFetchCurrentWeather = (
   lat: number,
   lon: number,
   cityname: string
@@ -78,7 +78,7 @@ const promiseFetchCurrentWeather = (
   });
 };
 
-const promiseDisplayForecast = (
+export const promiseDisplayForecast = (
   cityname: string,
   weatherData: any
 ): Promise<void> => {
@@ -95,7 +95,7 @@ const promiseDisplayForecast = (
 };
 
 
-const promiseGetCountry = (countryPrefix: string): Promise<string> => {
+export const promiseGetCountry = (countryPrefix: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (countryPrefix) {
       console.log(`Receiving country prefix...`);
@@ -106,7 +106,7 @@ const promiseGetCountry = (countryPrefix: string): Promise<string> => {
   });
 };
 
-const promiseFetchHeadlines = (countryPrefix: string): Promise<any> => {
+export const promiseFetchHeadlines = (countryPrefix: string): Promise<any> => {
   return new Promise((resolve, reject) => {
     console.log(`Fetching Top headlines for ${countryPrefix}`);
 
@@ -145,25 +145,28 @@ const promiseFetchHeadlines = (countryPrefix: string): Promise<any> => {
   });
 };
 
-const promiseDisplayNews = (headlines: any) => {
-  console.log(`Displaying Headlines`);
-
-  setTimeout(() => {
-    console.log(`Top Headlines :`);
-    headlines.data.forEach((data: any) => {
-      console.log(`Title: ${data.title || "N/A"}`);
-      console.log(`Description: ${data.description || "N/A"}`);
-      console.log(
-        `Published at: ${
-          data.published_at
-            ? new Intl.DateTimeFormat("en-GB").format(
-                new Date(data.published_at)
-              )
-            : "N/A"
-        }`
-      );
-    });
-  }, 2000);
+export const promiseDisplayNews = (headlines: any): Promise<void> => {
+  return new Promise((resolve) => {
+    console.log(`Displaying Headlines`);
+    setTimeout(() => {
+      console.log(`Top Headlines :`);
+      headlines.data.slice(0, 5).forEach((data: any) => {
+        console.log(`Title: ${data.title || "N/A"}`);
+        console.log(`Description: ${data.description || "N/A"}`);
+        console.log(
+          `Published at: ${
+            data.published_at
+              ? new Intl.DateTimeFormat("en-GB").format(
+                  new Date(data.published_at)
+                )
+              : "N/A"
+          }`
+        );
+        console.log("-------------------");
+      });
+      resolve();
+    }, 2000);
+  });
 };
 
 Promise.all([promiseGetLocation("Pretoria"), promiseGetCountry("za")])
@@ -185,6 +188,7 @@ Promise.all([promiseGetLocation("Pretoria"), promiseGetCountry("za")])
   .catch((error) => {
     console.error("An error occurred:", error.message);
   });
+
 
 
 

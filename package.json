@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "callbackVersion": "tsc && node dist/callbackVersion.js",
-    "promiseVersion": "tsc && node dist/promiseVersion.js"
+    "callback": "tsc && node dist/callbackVersion.js",
+    "promise": "tsc && node dist/promiseVersion.js",
+    "async": "tsc && node dist/asyncAwaitVersion.js"
   },
   "repository": {
     "type": "git",
