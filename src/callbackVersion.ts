@@ -50,7 +50,7 @@ const fetchCurrentWeather = (
   console.log(`Fetching the current weather for ${cityname}`);
   http
     .get(
-      `http://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}`,
+      `http://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`,
       (res: IncomingMessage) => {
         let currentWeather = "";
         res.on("data", (chunk) => {
@@ -73,13 +73,12 @@ const fetchCurrentWeather = (
     .on("error", (err) => callback(err));
 };
 
-const displayForecast = (cityname: string, weatherData: any) => {
+const displayForecast = (cityname: string, weatherData :any) => {
   setTimeout(() => {
-    console.log(
-      `The forecast for today for ${cityname} : ${JSON.stringify(
-        weatherData.main
-      )}`
-    );
+    console.log(`Weather in ${cityname}:`);
+    console.log(`Temperature: ${weatherData.main.temp}°C`);
+    console.log(`Feels like: ${weatherData.main.feels_like}°C`);
+    console.log(`Condition: ${weatherData.weather[0].description}`);
   }, 2000);
 };
 
@@ -92,3 +91,5 @@ getLocation("Pretoria", (error, lat, lon, cityname) => {
     displayForecast(city!, data);
   });
 });
+
+
