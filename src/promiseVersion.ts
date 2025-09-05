@@ -83,6 +83,7 @@ const promiseDisplayForecast = (
   weatherData: any
 ): Promise<void> => {
   return new Promise((resolve) => {
+    console.log(`Dispalying the current weather for ${cityname}`);
     setTimeout(() => {
       console.log(`Weather in ${cityname}:`);
       console.log(`Temperature: ${weatherData.main.temp}°C`);
@@ -93,14 +94,6 @@ const promiseDisplayForecast = (
   });
 };
 
-promiseGetLocation("Pretoria")
-  .then(({ lat, lon, name }) => {
-    return promiseFetchCurrentWeather(lat, lon, name);
-  })
-  .then(({ cityname, weatherData }) => {
-    return promiseDisplayForecast(cityname, weatherData);
-  })
-  .catch((error) => console.error("An error occured:", error.message));
 
 const promiseGetCountry = (countryPrefix: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -173,12 +166,25 @@ const promiseDisplayNews = (headlines: any) => {
   }, 2000);
 };
 
-promiseGetCountry("za")
-  .then((countryPrefix) => {
-    return promiseFetchHeadlines(countryPrefix);
+Promise.all([promiseGetLocation("Pretoria"), promiseGetCountry("za")])
+  .then(([location, countryPrefix]) => {
+    const weatherPromise = promiseFetchCurrentWeather(location.lat, location.lon, location.name);
+    const newsPromise = promiseFetchHeadlines(countryPrefix);
+    
+    return Promise.all([weatherPromise, newsPromise]);
   })
-  .then((headlines) => {
-    return promiseDisplayNews(headlines);
+  .then(([{ cityname, weatherData }, headlines]) => {
+    const displayWeather = promiseDisplayForecast(cityname, weatherData);
+    const displayNews = promiseDisplayNews(headlines);
+
+    return Promise.all([displayWeather, displayNews]);
   })
-  .catch((error) => console.error("An error has occured :", error.message));
+  .then(() => {
+    console.log("Weather and News fetched and displayed in parallel!");
+  })
+  .catch((error) => {
+    console.error("An error occurred:", error.message);
+  });
+
+
 
